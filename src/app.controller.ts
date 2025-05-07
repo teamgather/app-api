@@ -1,12 +1,25 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { All, Controller } from '@nestjs/common';
+import { Public } from './decorators/public.decorator';
 
+/**
+ * ANCHOR App Controller
+ * @date 07/05/2025 - 16:19:07
+ *
+ * @export
+ * @class AppController
+ * @typedef {AppController}
+ */
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
-
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  /**
+   * ANCHOR Index
+   * @date 07/05/2025 - 16:18:57
+   *
+   * @returns {[]}
+   */
+  @All()
+  @Public()
+  index(): [] {
+    return [];
   }
 }
