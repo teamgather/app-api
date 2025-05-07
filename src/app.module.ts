@@ -4,6 +4,8 @@ import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EnvInterface } from './interfaces/common.interface';
+import { UserModule } from './modules/user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 /**
  * ANCHOR App Module
@@ -26,6 +28,8 @@ import { EnvInterface } from './interfaces/common.interface';
         uri: configService.get<string>('MONGODB_URI'),
       }),
     }),
+    UserModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
