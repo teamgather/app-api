@@ -1,0 +1,112 @@
+version: 2.1
+
+# Define the jobs we want to run for this project
+jobs:
+  build:
+    docker:
+      - image: cimg/node:19.0
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          name: Restore npm package cache
+          keys:
+          - v1-dependencies-{{ checksum "package.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: Authenticate with registry 
+          command: echo $'@teamgather:registry=https://npm.pkg.github.com/teamgather\n//npm.pkg.github.com/:_authToken=${GITHUB_PERSONAL_ACCESS_TOKEN}\nregistry=https://registry.npmjs.org/\nlegacy-peer-deps=true' > ~/.npmrc
+
+      - run:
+          name: Npm install
+          command: npm install
+
+      - save_cache:
+          name: Save npm package cache
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+  build-prod:
+    docker:
+      - image: docker:20.10.21
+
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: false
+
+      - checkout
+
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Docker authentication
+          command: docker login -u $GITHUB_USER -p $GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io
+
+      - run:
+          name: Docker build image
+          command: docker build
+            --build-arg GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN
+            --build-arg MONGODB_URI=$MONGODB_URI
+            --build-arg REDIS_AUTH_PASS=$REDIS_AUTH_PASS
+            --build-arg REDIS_NOEVICTION_AUTH_PASS=$REDIS_NOEVICTION_AUTH_PASS
+            --build-arg SENTRY_DSN=$SENTRY_DSN
+            --build-arg RECAPTCHA_SECRET_KEY=$RECAPTCHA_SECRET_KEY
+            --build-arg JWT_SECRET_KEY=$JWT_SECRET_KEY
+            --build-arg COOKIE_SECRET_KEY=$COOKIE_SECRET_KEY
+            --build-arg APP_SECRET_KEY=$APP_SECRET_KEY
+            --build-arg AUTH_SECRET_KEY=$AUTH_SECRET_KEY
+            --tag $CONTAINER_IMAGE:prod . -f deployment/prod/Dockerfile
+
+      - run:
+          name: Docker push image
+          command: docker push $CONTAINER_IMAGE:prod
+
+  deploy-prod:
+    machine:
+      enabled: true
+
+    steps:
+      - checkout
+
+      - add_ssh_keys:
+          fingerprints:
+            - "$SSH_KEY_FINGERPRINT"
+
+      - run:
+          name: Deployment
+          command: cat deployment/prod/deploy.sh | ssh root@$VM_IP
+
+# Orchestrate our job run sequence
+workflows:
+  build-deploy-prod:
+    jobs:
+      - build:
+          context: prod-ctx
+          filters:
+            branches:
+              only:
+                - main
+
+      - build-prod:
+          context: prod-ctx
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - main
+
+      - deploy-prod:
+          context: prod-ctx
+          requires:
+            - build-prod
+          filters:
+            branches:
+              only:
+                - main
