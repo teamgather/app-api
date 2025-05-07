@@ -14,6 +14,7 @@ import { HydratedDocument, Model, QueryWithHelpers } from 'mongoose';
 import { AuthService } from './services/auth.service';
 import { Response } from 'express';
 import { AUTH_ACCESS_TOKEN_COOKIE_EXPIRES_DURATION_CONSTANT } from 'src/constants/auth.constant';
+import { Public } from 'src/decorators/public.decorator';
 
 /**
  * ANCHOR Auth Controller
@@ -33,13 +34,14 @@ export class AuthController {
 
   /**
    * ANCHOR Sign Up
-   * @date 08/05/2025 - 01:28:21
+   * @date 08/05/2025 - 04:18:14
    *
    * @async
    * @param {AuthSignUpBodyDto} body
    * @returns {Promise<[]>}
    */
   @Post('signup')
+  @Public()
   async signUp(@Body() body: AuthSignUpBodyDto): Promise<[]> {
     // check exists email address
     const existsEmailQuery: QueryWithHelpers<
@@ -77,7 +79,7 @@ export class AuthController {
 
   /**
    * ANCHOR Sign In
-   * @date 08/05/2025 - 02:45:06
+   * @date 08/05/2025 - 04:18:01
    *
    * @async
    * @param {Response} res
@@ -85,6 +87,7 @@ export class AuthController {
    * @returns {Promise<Response<[]>>}
    */
   @Post('signin')
+  @Public()
   async signIn(
     @Res() res: Response,
     @Body() body: AuthSignInBodyDto,

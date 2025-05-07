@@ -6,6 +6,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { EnvInterface } from './interfaces/common.interface';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CacheModule } from '@nestjs/cache-manager';
+import { CACHE_TTL_CONSTANT } from '@teamgather/common';
+import { CacheService } from './services/cache/cache.service';
 
 /**
  * ANCHOR App Module
@@ -28,11 +31,19 @@ import { AuthModule } from './modules/auth/auth.module';
         uri: configService.get<string>('MONGODB_URI'),
       }),
     }),
+    CacheModule.register({
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: () => ({
+        ttl: CACHE_TTL_CONSTANT,
+      }),
+    }),
     UserModule,
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
-  exports: [AppService],
+  providers: [AppService, CacheService],
+  exports: [AppService, CacheService],
 })
 export class AppModule {}

@@ -1,7 +1,7 @@
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import chalk from 'chalk';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -10,6 +10,8 @@ import {
   json as bodyParserJson,
   urlencoded as bodyParserUrlencoded,
 } from 'body-parser';
+import { AuthJwtGuard } from './modules/auth/auth.jwt.guard';
+import { AuthUserInterface } from '@teamgather/common';
 
 const APP = 'APP API';
 const PORT = 5100;
@@ -67,6 +69,12 @@ async function bootstrap() {
     }),
   );
 
+  // reflector
+  const reflector = app.get(Reflector);
+
+  // auth jwt
+  app.useGlobalGuards(new AuthJwtGuard(reflector));
+
   // shutdown hooks
   app.enableShutdownHooks();
 
@@ -102,5 +110,12 @@ declare global {
     interface ProcessEnv extends EnvInterface {
       NODE_ENV: 'test' | 'development' | 'production';
     }
+  }
+}
+
+// express
+declare module 'express' {
+  interface Request {
+    user: AuthUserInterface;
   }
 }

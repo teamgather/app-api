@@ -5,6 +5,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '@teamgather/common/schemas';
 import { JwtModule } from '@nestjs/jwt';
 import { AUTH_ACCESS_TOKEN_JWT_EXPIRES_IN_CONSTANT } from 'src/constants/auth.constant';
+import { AuthJwtStrategy } from './auth.jwt.strategy';
+import { UserService } from '../user/services/user.service';
+import { UserCacheService } from '../user/services/user.cache.service';
 
 /**
  * ANCHOR Auth Module
@@ -32,6 +35,6 @@ import { AUTH_ACCESS_TOKEN_JWT_EXPIRES_IN_CONSTANT } from 'src/constants/auth.co
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, AuthJwtStrategy, UserService, UserCacheService],
 })
 export class AuthModule {}
