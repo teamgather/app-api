@@ -17,4 +17,9 @@ export interface EnvInterface {
   COOKIE_DOMAIN: string;
 
   APP_URL: string;
+
+  JWT_SECRET_KEY: string;
+  COOKIE_SECRET_KEY: string;
+
+  AUTH_ACCESS_TOKEN_COOKIE_NAME: string;
 }

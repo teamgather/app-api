@@ -53,14 +53,8 @@ jobs:
           command: docker build
             --build-arg GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN
             --build-arg MONGODB_URI=$MONGODB_URI
-            --build-arg REDIS_AUTH_PASS=$REDIS_AUTH_PASS
-            --build-arg REDIS_NOEVICTION_AUTH_PASS=$REDIS_NOEVICTION_AUTH_PASS
-            --build-arg SENTRY_DSN=$SENTRY_DSN
-            --build-arg RECAPTCHA_SECRET_KEY=$RECAPTCHA_SECRET_KEY
             --build-arg JWT_SECRET_KEY=$JWT_SECRET_KEY
             --build-arg COOKIE_SECRET_KEY=$COOKIE_SECRET_KEY
-            --build-arg APP_SECRET_KEY=$APP_SECRET_KEY
-            --build-arg AUTH_SECRET_KEY=$AUTH_SECRET_KEY
             --tag $CONTAINER_IMAGE:prod . -f deployment/prod/Dockerfile
 
       - run:

@@ -1,0 +1,2 @@
+export const AUTH_ACCESS_TOKEN_COOKIE_EXPIRES_DURATION_CONSTANT: number = 1; // 1 day
+export const AUTH_ACCESS_TOKEN_JWT_EXPIRES_IN_CONSTANT: number = 60 * 60 * 24; // 1 day

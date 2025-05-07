@@ -26,6 +26,9 @@ ARG GITHUB_PERSONAL_ACCESS_TOKEN
 
 ARG MONGODB_URI
 
+ARG JWT_SECRET_KEY
+ARG COOKIE_SECRET_KEY
+
 # copy
 COPY --from=build-stage /usr/src/app/dist /usr/src/app
 COPY package*.json ./
@@ -49,6 +52,11 @@ ENV CORS_WHITELIST=https://gather.team,https://www.gather.team
 ENV COOKIE_DOMAIN=.gather.team
 
 ENV APP_URL=https://gather.team
+
+ENV JWT_SECRET_KEY=${JWT_SECRET_KEY}
+ENV COOKIE_SECRET_KEY=${COOKIE_SECRET_KEY}
+
+ENV AUTH_ACCESS_TOKEN_COOKIE_NAME=mxdbjgkv
 
 # expose
 EXPOSE 5100
