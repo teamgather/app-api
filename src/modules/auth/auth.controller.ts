@@ -3,8 +3,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   NotFoundException,
   Post,
+  Req,
   Res,
 } from '@nestjs/common';
 import { AuthSignInBodyDto, AuthSignUpBodyDto } from './auth.dto';
@@ -12,9 +14,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from '@teamgather/common/schemas';
 import { HydratedDocument, Model, QueryWithHelpers } from 'mongoose';
 import { AuthService } from './services/auth.service';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AUTH_ACCESS_TOKEN_COOKIE_EXPIRES_DURATION_CONSTANT } from 'src/constants/auth.constant';
 import { Public } from 'src/decorators/public.decorator';
+import { AuthUserInterface } from '@teamgather/common';
+import { UserCacheService } from '../user/services/user.cache.service';
 
 /**
  * ANCHOR Auth Controller
@@ -30,7 +34,43 @@ export class AuthController {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly authService: AuthService,
+    private readonly userCacheService: UserCacheService,
   ) {}
+
+  /**
+   * ANCHOR Sign Out
+   * @date 08/05/2025 - 07:42:20
+   *
+   * @async
+   * @param {Request} req
+   * @param {Response} res
+   * @returns {Promise<Response<[]>>}
+   */
+  @Get('signout')
+  @Public()
+  async signOut(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<Response<[]>> {
+    if (req.user) {
+      // auth
+      const auth: AuthUserInterface = req.user;
+
+      // remove cache
+      await this.userCacheService.flushRelatedCache({
+        userId: auth.userId,
+      });
+    }
+
+    // clear cookie
+    res.clearCookie(process.env.AUTH_ACCESS_TOKEN_COOKIE_NAME, {
+      domain: process.env.COOKIE_DOMAIN,
+      httpOnly: true,
+      path: '/',
+    });
+
+    return res.json([]);
+  }
 
   /**
    * ANCHOR Sign Up
@@ -130,7 +170,7 @@ export class AuthController {
       userId,
     });
 
-    // response
+    // set cookie
     res.cookie(process.env.AUTH_ACCESS_TOKEN_COOKIE_NAME, accessToken, {
       domain: process.env.COOKIE_DOMAIN,
       httpOnly: true,
