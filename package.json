@@ -29,7 +29,7 @@
     "@nestjs/mongoose": "^11.0.3",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
-    "@teamgather/common": "1.0.8",
+    "@teamgather/common": "1.0.12",
     "bcrypt": "^5.1.1",
     "body-parser": "^2.2.0",
     "cache-manager": "^6.4.3",

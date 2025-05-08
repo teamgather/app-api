@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { UserController } from './user.controller';
 import { UserService } from './services/user.service';
 import { UserCacheService } from './services/user.cache.service';
@@ -7,12 +7,13 @@ import { User, UserSchema } from '@teamgather/common/schemas';
 
 /**
  * ANCHOR User Module
- * @date 08/05/2025 - 05:22:21
+ * @date 08/05/2025 - 12:08:29
  *
  * @export
  * @class UserModule
  * @typedef {UserModule}
  */
+@Global()
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -24,5 +25,6 @@ import { User, UserSchema } from '@teamgather/common/schemas';
   ],
   controllers: [UserController],
   providers: [UserService, UserCacheService],
+  exports: [UserService],
 })
 export class UserModule {}

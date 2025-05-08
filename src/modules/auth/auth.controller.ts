@@ -114,6 +114,7 @@ export class AuthController {
       name: body.name,
       email: body.email,
       password,
+      members: [],
     });
 
     const userId: string = user._id.toString();
