@@ -74,15 +74,19 @@ export class AuthController {
 
   /**
    * ANCHOR Sign Up
-   * @date 08/05/2025 - 04:18:14
+   * @date 08/05/2025 - 08:32:45
    *
    * @async
+   * @param {Response} res
    * @param {AuthSignUpBodyDto} body
-   * @returns {Promise<[]>}
+   * @returns {Promise<Response<[]>>}
    */
   @Post('signup')
   @Public()
-  async signUp(@Body() body: AuthSignUpBodyDto): Promise<[]> {
+  async signUp(
+    @Res() res: Response,
+    @Body() body: AuthSignUpBodyDto,
+  ): Promise<Response<[]>> {
     // check exists email address
     const existsEmailQuery: QueryWithHelpers<
       HydratedDocument<UserDocument> | null,
@@ -112,9 +116,25 @@ export class AuthController {
       password,
     });
 
-    console.log(user);
+    const userId: string = user._id.toString();
 
-    return [];
+    // access token
+    const accessToken: string = this.authService.accessToken({
+      userId,
+    });
+
+    // set cookie
+    res.cookie(process.env.AUTH_ACCESS_TOKEN_COOKIE_NAME, accessToken, {
+      domain: process.env.COOKIE_DOMAIN,
+      httpOnly: true,
+      signed: true,
+      expires: moment()
+        .add(AUTH_ACCESS_TOKEN_COOKIE_EXPIRES_DURATION_CONSTANT, 'd')
+        .toDate(),
+      path: '/',
+    });
+
+    return res.json([]);
   }
 
   /**
@@ -147,7 +167,8 @@ export class AuthController {
 
     if (!user) {
       throw new NotFoundException({
-        eMessage: 'Your account information was not found.',
+        eMessage:
+          'Your account information was not found\nor your password is incorrect.',
       });
     }
 
@@ -161,7 +182,8 @@ export class AuthController {
 
     if (!isVerified) {
       throw new NotFoundException({
-        eMessage: 'Your password is incorrect.',
+        eMessage:
+          'Your account information was not found\nor your password is incorrect.',
       });
     }
 
