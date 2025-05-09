@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Project, ProjectDocument } from '@teamgather/common/schemas';
+import {
+  Member,
+  Project,
+  ProjectDocument,
+  UserDocument,
+} from '@teamgather/common/schemas';
 import {
   ClientSession,
   HydratedDocument,
@@ -10,7 +15,12 @@ import {
 } from 'mongoose';
 import { CacheService } from 'src/services/cache/cache.service';
 import { ProjectCacheService } from './project.cache.service';
-import { MemberModel, ProjectModel, UserModel } from '@teamgather/common';
+import {
+  MemberModel,
+  MemberRoleEnum,
+  ProjectModel,
+  UserModel,
+} from '@teamgather/common';
 import { MemberService } from 'src/modules/member/services/member.service';
 
 /**
@@ -194,5 +204,65 @@ export class ProjectService {
     }
 
     return projectMember;
+  }
+
+  /**
+   * ANCHOR Member Doc
+   * @date 09/05/2025 - 12:56:37
+   *
+   * @param {{
+   *     project: ProjectDocument;
+   *     user: UserDocument;
+   *   }} payload
+   * @returns {(Member | null)}
+   */
+  memberDoc(payload: {
+    project: ProjectDocument;
+    user: UserDocument;
+  }): Member | null {
+    // project member
+    const projectMember: Member | undefined = payload.project.members.find(
+      (e) => {
+        return e.userId == payload.user.id;
+      },
+    );
+
+    if (!projectMember) {
+      return null;
+    }
+
+    // user member
+    const userMember: Member | undefined = payload.user.members.find((e) => {
+      return e.projectId == payload.project.id;
+    });
+
+    if (!userMember) {
+      return null;
+    }
+
+    // match
+    if (projectMember.id != userMember.id) {
+      return null;
+    }
+
+    return projectMember;
+  }
+
+  /**
+   * ANCHOR Is Owner Member
+   * @date 09/05/2025 - 13:19:44
+   *
+   * @param {(Member | MemberModel)} member
+   * @returns {boolean}
+   */
+  isOwnerMember(member: Member | MemberModel): boolean {
+    const memberRole: MemberRoleEnum = member.role;
+    const ownerRole: MemberRoleEnum = MemberRoleEnum.Owner;
+
+    if (memberRole != ownerRole) {
+      return false;
+    }
+
+    return true;
   }
 }
