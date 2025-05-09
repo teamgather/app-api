@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { UserInfoSuffixCache, UserItemPrefixCache } from '@teamgather/common';
+import {
+  UserInfoSuffixCache,
+  UserItemPrefixCache,
+  UserProjectsSuffixCache,
+} from '@teamgather/common';
 import { CacheService } from 'src/services/cache/cache.service';
 
 /**
@@ -47,6 +51,10 @@ export class UserCacheService {
     await this.flushInfoCache({
       userId: payload.userId,
     });
+
+    await this.flushProjectsCache({
+      userId: payload.userId,
+    });
   }
 
   /**
@@ -74,6 +82,37 @@ export class UserCacheService {
    */
   async flushInfoCache(payload: { userId: string }): Promise<void> {
     const cacheKey: string = this.infoCacheKey({
+      userId: payload.userId,
+    });
+
+    await this.cacheService.manager.del(cacheKey);
+  }
+
+  /**
+   * ANCHOR Projects Cache Key
+   * @date 09/05/2025 - 15:38:12
+   *
+   * @param {{ userId: string }} payload
+   * @returns {string}
+   */
+  projectsCacheKey(payload: { userId: string }): string {
+    return this.cacheService.key(
+      UserItemPrefixCache,
+      payload.userId,
+      UserProjectsSuffixCache,
+    );
+  }
+
+  /**
+   * ANCHOR Flush Projects Cache
+   * @date 09/05/2025 - 15:38:58
+   *
+   * @async
+   * @param {{ userId: string }} payload
+   * @returns {Promise<void>}
+   */
+  async flushProjectsCache(payload: { userId: string }): Promise<void> {
+    const cacheKey: string = this.projectsCacheKey({
       userId: payload.userId,
     });
 

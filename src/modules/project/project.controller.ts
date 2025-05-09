@@ -13,6 +13,7 @@ import {
 import {
   ClientSession,
   Connection,
+  HydratedDocument,
   Model,
   QueryWithHelpers,
   UpdateWriteOpResult,
@@ -40,6 +41,7 @@ import { ItemParamDto } from 'src/dto/common.dto';
 import { UserCacheService } from '../user/services/user.cache.service';
 import { ProjectFormBodyDto } from './project.dto';
 import { ProjectCacheService } from './services/project.cache.service';
+import { CacheService } from 'src/services/cache/cache.service';
 
 /**
  * ANCHOR Project Controller
@@ -62,7 +64,81 @@ export class ProjectController {
     private readonly projectService: ProjectService,
     private readonly userCacheService: UserCacheService,
     private readonly projectCacheService: ProjectCacheService,
+    private readonly cacheService: CacheService,
   ) {}
+
+  /**
+   * ANCHOR List
+   * @date 09/05/2025 - 15:23:26
+   *
+   * @async
+   * @param {Request} req
+   * @returns {Promise<{
+   *     projects: ProjectModel[];
+   *   }>}
+   */
+  @Get('list')
+  async list(@Req() req: Request): Promise<{
+    projects: ProjectModel[];
+  }> {
+    // auth
+    const auth: AuthUserInterface = req.user;
+
+    // user
+    const user: UserModel | null = await this.userService.info({
+      userId: auth.userId,
+    });
+
+    if (!user) {
+      throw new ForbiddenException();
+    }
+
+    // cache key
+    const cacheKey: string = this.userCacheService.projectsCacheKey({
+      userId: user.id,
+    });
+
+    // projects
+    const projects: ProjectModel[] = await this.cacheService.manager.wrap<
+      ProjectModel[]
+    >(cacheKey, async () => {
+      // list
+      const list: ProjectModel[] = [];
+
+      // items
+      const itemsQuery: QueryWithHelpers<
+        HydratedDocument<ProjectDocument>[],
+        HydratedDocument<ProjectDocument>
+      > = this.projectModel
+        .find({
+          members: {
+            $elemMatch: {
+              userId: user.id,
+            },
+          },
+        })
+        .sort({
+          name: 1,
+        });
+
+      const items: ProjectDocument[] = await itemsQuery.exec();
+
+      for (const item of items) {
+        // project
+        const project: ProjectModel = this.projectService.model({
+          project: item,
+        });
+
+        list.push(project);
+      }
+
+      return list;
+    });
+
+    return {
+      projects,
+    };
+  }
 
   /**
    * ANCHOR Create
@@ -248,8 +324,6 @@ export class ProjectController {
       throw new ForbiddenException();
     }
 
-    const userId: string = user._id.toString();
-
     // project
     const project: ProjectDocument | null = await this.projectService.project({
       projectId: param.id,
@@ -310,9 +384,11 @@ export class ProjectController {
       projectId,
     });
 
-    await this.userCacheService.flushRelatedCache({
-      userId,
-    });
+    for (const member of project.members) {
+      await this.userCacheService.flushRelatedCache({
+        userId: member.userId,
+      });
+    }
 
     return [];
   }
