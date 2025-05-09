@@ -38,7 +38,7 @@ import {
 import { ProjectService } from './services/project.service';
 import { ItemParamDto } from 'src/dto/common.dto';
 import { UserCacheService } from '../user/services/user.cache.service';
-import { ProjectCreateBodyDto, ProjectNameBodyDto } from './project.dto';
+import { ProjectFormBodyDto } from './project.dto';
 import { ProjectCacheService } from './services/project.cache.service';
 
 /**
@@ -66,11 +66,11 @@ export class ProjectController {
 
   /**
    * ANCHOR Create
-   * @date 09/05/2025 - 11:48:30
+   * @date 09/05/2025 - 14:51:51
    *
    * @async
    * @param {Request} req
-   * @param {ProjectCreateBodyDto} body
+   * @param {ProjectFormBodyDto} body
    * @returns {Promise<{
    *     id: string;
    *   }>}
@@ -78,7 +78,7 @@ export class ProjectController {
   @Post('create')
   async create(
     @Req() req: Request,
-    @Body() body: ProjectCreateBodyDto,
+    @Body() body: ProjectFormBodyDto,
   ): Promise<{
     id: string;
   }> {
@@ -221,20 +221,20 @@ export class ProjectController {
   }
 
   /**
-   * ANCHOR Name
-   * @date 09/05/2025 - 12:51:40
+   * ANCHOR Update
+   * @date 09/05/2025 - 14:52:15
    *
    * @async
    * @param {Request} req
    * @param {ItemParamDto} param
-   * @param {ProjectNameBodyDto} body
+   * @param {ProjectFormBodyDto} body
    * @returns {Promise<[]>}
    */
-  @Put(':id/name')
-  async name(
+  @Put(':id/update')
+  async update(
     @Req() req: Request,
     @Param() param: ItemParamDto,
-    @Body() body: ProjectNameBodyDto,
+    @Body() body: ProjectFormBodyDto,
   ): Promise<[]> {
     // auth
     const auth: AuthUserInterface = req.user;
@@ -278,6 +278,9 @@ export class ProjectController {
       throw new ForbiddenException();
     }
 
+    // info
+    const description: string | null = body.description || null;
+
     // update project
     const projectUpdatedQuery: QueryWithHelpers<
       UpdateWriteOpResult,
@@ -288,6 +291,7 @@ export class ProjectController {
       },
       {
         name: body.name,
+        description,
       },
       {
         runValidators: true,
