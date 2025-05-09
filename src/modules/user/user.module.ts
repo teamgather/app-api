@@ -4,6 +4,7 @@ import { UserService } from './services/user.service';
 import { UserCacheService } from './services/user.cache.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '@teamgather/common/schemas';
+import { MemberService } from '../member/services/member.service';
 
 /**
  * ANCHOR User Module
@@ -24,7 +25,7 @@ import { User, UserSchema } from '@teamgather/common/schemas';
     ]),
   ],
   controllers: [UserController],
-  providers: [UserService, UserCacheService],
+  providers: [UserService, UserCacheService, MemberService],
   exports: [UserService],
 })
 export class UserModule {}

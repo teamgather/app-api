@@ -2,7 +2,10 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
   InternalServerErrorException,
+  NotFoundException,
+  Param,
   Post,
   Req,
 } from '@nestjs/common';
@@ -25,7 +28,16 @@ import {
 import { v1 as uuidv1 } from 'uuid';
 import { Request } from 'express';
 import { UserService } from '../user/services/user.service';
-import { AuthUserInterface, MemberRoleEnum } from '@teamgather/common';
+import {
+  AuthUserInterface,
+  MemberModel,
+  MemberRoleEnum,
+  ProjectModel,
+  UserModel,
+} from '@teamgather/common';
+import { ProjectService } from './services/project.service';
+import { ItemParamDto } from 'src/dto/common.dto';
+import { UserCacheService } from '../user/services/user.cache.service';
 
 /**
  * ANCHOR Project Controller
@@ -45,6 +57,8 @@ export class ProjectController {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly userService: UserService,
+    private readonly projectService: ProjectService,
+    private readonly userCacheService: UserCacheService,
   ) {}
 
   /**
@@ -86,6 +100,8 @@ export class ProjectController {
         throw new ForbiddenException();
       }
 
+      const userId: string = user._id.toString();
+
       // info
       const description: string | null = body.description || null;
 
@@ -112,9 +128,9 @@ export class ProjectController {
       // create owner member
       const member: Member = {
         id: uuidv1(),
-        project,
+        projectId,
         projectName: project.name,
-        user,
+        userId,
         userName: user.name,
         role: MemberRoleEnum.Owner,
         createdAt: now,
@@ -175,6 +191,11 @@ export class ProjectController {
       // commit
       await session.commitTransaction();
 
+      // remove cache
+      await this.userCacheService.flushRelatedCache({
+        userId: auth.userId,
+      });
+
       // id
       id = projectId;
     } catch (e) {
@@ -193,6 +214,60 @@ export class ProjectController {
 
     return {
       id,
+    };
+  }
+
+  /**
+   * ANCHOR Info
+   * @date 09/05/2025 - 11:33:47
+   *
+   * @async
+   * @param {Request} req
+   * @param {ItemParamDto} param
+   * @returns {Promise<{
+   *     project: ProjectModel;
+   *   }>}
+   */
+  @Get(':id/info')
+  async info(
+    @Req() req: Request,
+    @Param() param: ItemParamDto,
+  ): Promise<{
+    project: ProjectModel;
+  }> {
+    // auth
+    const auth: AuthUserInterface = req.user;
+
+    // user
+    const user: UserModel | null = await this.userService.info({
+      userId: auth.userId,
+    });
+
+    if (!user) {
+      throw new ForbiddenException();
+    }
+
+    // project
+    const project: ProjectModel | null = await this.projectService.info({
+      projectId: param.id,
+    });
+
+    if (!project) {
+      throw new NotFoundException();
+    }
+
+    // member
+    const member: MemberModel | null = this.projectService.member({
+      project,
+      user,
+    });
+
+    if (!member) {
+      throw new ForbiddenException();
+    }
+
+    return {
+      project,
     };
   }
 }

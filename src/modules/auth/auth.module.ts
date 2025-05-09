@@ -8,6 +8,7 @@ import { AUTH_ACCESS_TOKEN_JWT_EXPIRES_IN_CONSTANT } from 'src/constants/auth.co
 import { AuthJwtStrategy } from './auth.jwt.strategy';
 import { UserService } from '../user/services/user.service';
 import { UserCacheService } from '../user/services/user.cache.service';
+import { MemberService } from '../member/services/member.service';
 
 /**
  * ANCHOR Auth Module
@@ -35,6 +36,12 @@ import { UserCacheService } from '../user/services/user.cache.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthJwtStrategy, UserService, UserCacheService],
+  providers: [
+    AuthService,
+    AuthJwtStrategy,
+    UserService,
+    UserCacheService,
+    MemberService,
+  ],
 })
 export class AuthModule {}

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { UserModel } from '@teamgather/common';
+import { MemberModel, UserModel } from '@teamgather/common';
 import { User, UserDocument } from '@teamgather/common/schemas';
 import {
   ClientSession,
@@ -11,6 +11,7 @@ import {
 } from 'mongoose';
 import { UserCacheService } from './user.cache.service';
 import { CacheService } from 'src/services/cache/cache.service';
+import { MemberService } from 'src/modules/member/services/member.service';
 
 /**
  * ANCHOR User Service
@@ -27,6 +28,7 @@ export class UserService {
     private readonly userModel: Model<UserDocument>,
     private readonly userCacheService: UserCacheService,
     private readonly cacheService: CacheService,
+    private readonly memberService: MemberService,
   ) {}
 
   /**
@@ -128,11 +130,23 @@ export class UserService {
     // id
     const id: string = user._id.toString();
 
+    // members
+    const members: MemberModel[] = [];
+
+    for (const userMember of user.members) {
+      const member: MemberModel = this.memberService.model({
+        member: userMember,
+      });
+
+      members.push(member);
+    }
+
     // model
     const model: UserModel = {
       id,
       name: user.name,
       email: user.email,
+      members,
     };
 
     return model;

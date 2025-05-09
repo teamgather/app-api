@@ -10,6 +10,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { CACHE_TTL_CONSTANT } from '@teamgather/common';
 import { CacheService } from './services/cache/cache.service';
 import { ProjectModule } from './modules/project/project.module';
+import { MemberModule } from './modules/member/member.module';
 
 /**
  * ANCHOR App Module
@@ -43,6 +44,7 @@ import { ProjectModule } from './modules/project/project.module';
     UserModule,
     AuthModule,
     ProjectModule,
+    MemberModule,
   ],
   controllers: [AppController],
   providers: [AppService, CacheService],

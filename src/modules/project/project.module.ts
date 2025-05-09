@@ -9,6 +9,8 @@ import {
   User,
   UserSchema,
 } from '@teamgather/common/schemas';
+import { MemberService } from '../member/services/member.service';
+import { UserCacheService } from '../user/services/user.cache.service';
 
 /**
  * ANCHOR Project Module
@@ -32,6 +34,11 @@ import {
     ]),
   ],
   controllers: [ProjectController],
-  providers: [ProjectService, ProjectCacheService],
+  providers: [
+    ProjectService,
+    ProjectCacheService,
+    MemberService,
+    UserCacheService,
+  ],
 })
 export class ProjectModule {}
