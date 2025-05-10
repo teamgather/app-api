@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import { IsMongoId, IsOptional, IsString, Length } from 'class-validator';
+import { ItemParamDto } from 'src/dto/common.dto';
 
 /**
  * ANCHOR Project Form Body Dto
@@ -36,4 +37,19 @@ export class ProjectMemberFormBodyDto {
   @IsString()
   @IsMongoId()
   userId: string;
+}
+
+/**
+ * ANCHOR Project Member Item Param Dto
+ * @date 11/05/2025 - 06:15:51
+ *
+ * @export
+ * @class ProjectMemberItemParamDto
+ * @typedef {ProjectMemberItemParamDto}
+ * @extends {ItemParamDto}
+ */
+export class ProjectMemberItemParamDto extends ItemParamDto {
+  @IsString()
+  @IsMongoId()
+  memberId: string;
 }

@@ -41,7 +41,11 @@ import {
 import { ProjectService } from './services/project.service';
 import { ItemParamDto } from 'src/dto/common.dto';
 import { UserCacheService } from '../user/services/user.cache.service';
-import { ProjectFormBodyDto, ProjectMemberFormBodyDto } from './project.dto';
+import {
+  ProjectFormBodyDto,
+  ProjectMemberFormBodyDto,
+  ProjectMemberItemParamDto,
+} from './project.dto';
 import { ProjectCacheService } from './services/project.cache.service';
 import { CacheService } from 'src/services/cache/cache.service';
 import { ObjectId } from 'mongodb';
@@ -462,6 +466,169 @@ export class ProjectController {
 
       await this.userCacheService.flushRelatedCache({
         userId: memberUserId,
+      });
+
+      for (const member of project.members) {
+        await this.userCacheService.flushRelatedCache({
+          userId: member.userId,
+        });
+      }
+
+      // commit
+      await session.commitTransaction();
+    } catch (e) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+
+      throw e;
+    } finally {
+      await session.endSession();
+    }
+
+    return [];
+  }
+
+  /**
+   * ANCHOR Member Remove
+   * @date 11/05/2025 - 06:17:20
+   *
+   * @async
+   * @param {Request} req
+   * @param {ProjectMemberItemParamDto} param
+   * @returns {Promise<[]>}
+   */
+  @Delete(':id/member/:memberId/remove')
+  async memberRemove(
+    @Req() req: Request,
+    @Param() param: ProjectMemberItemParamDto,
+  ): Promise<[]> {
+    // session
+    const session: ClientSession = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      // auth
+      const auth: AuthUserInterface = req.user;
+
+      // user
+      const user: UserDocument | null = await this.userService.user({
+        userId: auth.userId,
+        session,
+      });
+
+      if (!user) {
+        throw new ForbiddenException();
+      }
+
+      // project
+      const project: ProjectDocument | null = await this.projectService.project(
+        {
+          projectId: param.id,
+          session,
+        },
+      );
+
+      if (!project) {
+        throw new NotFoundException();
+      }
+
+      const projectId: string = project._id.toString();
+
+      // member
+      const member: Member | null = this.projectService.memberDoc({
+        project,
+        user,
+      });
+
+      if (!member) {
+        throw new ForbiddenException();
+      }
+
+      // check is owner
+      const isOwnerMember: boolean = this.projectService.isOwnerMember(member);
+
+      if (!isOwnerMember) {
+        throw new ForbiddenException();
+      }
+
+      // member user
+      const memberUser: Member | undefined = project.members.find((e) => {
+        return e.userId == param.memberId;
+      });
+
+      if (!memberUser) {
+        throw new NotFoundException({
+          eMessage: 'The requested user information was not found.',
+        });
+      }
+
+      // check member user is owner
+      const isOwnerMemberUser: boolean =
+        this.projectService.isOwnerMember(memberUser);
+
+      if (isOwnerMemberUser) {
+        throw new ForbiddenException();
+      }
+
+      // update project
+      const projectUpdatedQuery: QueryWithHelpers<
+        UpdateWriteOpResult,
+        ProjectDocument
+      > = this.projectModel.updateOne(
+        {
+          _id: project._id,
+        },
+        {
+          $pull: {
+            members: {
+              id: memberUser.id,
+            },
+          },
+        },
+        {
+          session,
+          runValidators: true,
+        },
+      );
+
+      const projectUpdated: UpdateWriteOpResult =
+        await projectUpdatedQuery.exec();
+
+      if (projectUpdated.modifiedCount != 1) {
+        throw new InternalServerErrorException();
+      }
+
+      // update user
+      const userUpdatedQuery: QueryWithHelpers<
+        UpdateWriteOpResult,
+        UserDocument
+      > = this.userModel.updateOne(
+        {
+          _id: new ObjectId(memberUser.userId),
+        },
+        {
+          $pull: {
+            members: {
+              id: memberUser.id,
+            },
+          },
+        },
+        {
+          session,
+          runValidators: true,
+        },
+      );
+
+      const userUpdated: UpdateWriteOpResult = await userUpdatedQuery.exec();
+
+      if (userUpdated.modifiedCount != 1) {
+        throw new InternalServerErrorException();
+      }
+
+      // remove cache
+      await this.projectCacheService.flushRelatedCache({
+        projectId,
       });
 
       for (const member of project.members) {
