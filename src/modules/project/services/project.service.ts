@@ -157,6 +157,7 @@ export class ProjectService {
       name: project.name,
       description: project.description,
       members,
+      createdAt: project.createdAt.toISOString(),
     };
 
     return model;

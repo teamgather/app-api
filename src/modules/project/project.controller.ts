@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   InternalServerErrorException,
@@ -13,6 +14,7 @@ import {
 import {
   ClientSession,
   Connection,
+  DeleteResult,
   HydratedDocument,
   Model,
   QueryWithHelpers,
@@ -42,6 +44,7 @@ import { UserCacheService } from '../user/services/user.cache.service';
 import { ProjectFormBodyDto } from './project.dto';
 import { ProjectCacheService } from './services/project.cache.service';
 import { CacheService } from 'src/services/cache/cache.service';
+import { ObjectId } from 'mongodb';
 
 /**
  * ANCHOR Project Controller
@@ -294,6 +297,139 @@ export class ProjectController {
     return {
       id,
     };
+  }
+
+  /**
+   * ANCHOR Remove
+   * @date 10/05/2025 - 18:56:12
+   *
+   * @async
+   * @param {Request} req
+   * @param {ItemParamDto} param
+   * @returns {Promise<[]>}
+   */
+  @Delete(':id/remove')
+  async remove(@Req() req: Request, @Param() param: ItemParamDto): Promise<[]> {
+    // session
+    const session: ClientSession = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      // auth
+      const auth: AuthUserInterface = req.user;
+
+      // user
+      const user: UserDocument | null = await this.userService.user({
+        userId: auth.userId,
+        session,
+      });
+
+      if (!user) {
+        throw new ForbiddenException();
+      }
+
+      // project
+      const project: ProjectDocument | null = await this.projectService.project(
+        {
+          projectId: param.id,
+          session,
+        },
+      );
+
+      if (!project) {
+        throw new NotFoundException();
+      }
+
+      const projectId: string = project._id.toString();
+
+      // member
+      const member: Member | null = this.projectService.memberDoc({
+        project,
+        user,
+      });
+
+      if (!member) {
+        throw new ForbiddenException();
+      }
+
+      // check is owner
+      const isOwnerMember: boolean = this.projectService.isOwnerMember(member);
+
+      if (!isOwnerMember) {
+        throw new ForbiddenException();
+      }
+
+      // delete project
+      const projectDeletedQuery: QueryWithHelpers<
+        DeleteResult,
+        ProjectDocument
+      > = this.projectModel.deleteOne(
+        {
+          _id: project._id,
+        },
+        {
+          session,
+        },
+      );
+
+      const projectDeleted: DeleteResult = await projectDeletedQuery.exec();
+
+      if (projectDeleted.deletedCount != 1) {
+        throw new InternalServerErrorException();
+      }
+
+      for (const member of project.members) {
+        // update user
+        const userUpdatedQuery: QueryWithHelpers<
+          UpdateWriteOpResult,
+          UserDocument
+        > = this.userModel.updateOne(
+          {
+            _id: new ObjectId(member.userId),
+          },
+          {
+            $pull: {
+              members: {
+                id: member.id,
+              },
+            },
+          },
+          {
+            session,
+            runValidators: true,
+          },
+        );
+
+        const userUpdated: UpdateWriteOpResult = await userUpdatedQuery.exec();
+
+        if (userUpdated.modifiedCount != 1) {
+          throw new InternalServerErrorException();
+        }
+
+        // remove cache
+        await this.userCacheService.flushRelatedCache({
+          userId: member.userId,
+        });
+      }
+
+      // remove cache
+      await this.projectCacheService.flushRelatedCache({
+        projectId,
+      });
+
+      // commit
+      await session.commitTransaction();
+    } catch (e) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+
+      throw e;
+    } finally {
+      await session.endSession();
+    }
+
+    return [];
   }
 
   /**
