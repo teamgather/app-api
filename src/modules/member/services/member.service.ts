@@ -28,6 +28,8 @@ export class MemberService {
       id: member.id,
       projectId: member.projectId,
       userId: member.userId,
+      userName: member.userName,
+      userEmail: member.userEmail,
       role: member.role,
       createdAt: member.createdAt.toISOString(),
     };

@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, Length } from 'class-validator';
+import { IsMongoId, IsOptional, IsString, Length } from 'class-validator';
 
 /**
  * ANCHOR Project Form Body Dto
@@ -22,4 +22,18 @@ export class ProjectFormBodyDto {
     return value ? (value as string).trim() : (value as unknown);
   })
   description?: string;
+}
+
+/**
+ * ANCHOR Project Member Form Body Dto
+ * @date 10/05/2025 - 21:57:28
+ *
+ * @export
+ * @class ProjectMemberFormBodyDto
+ * @typedef {ProjectMemberFormBodyDto}
+ */
+export class ProjectMemberFormBodyDto {
+  @IsString()
+  @IsMongoId()
+  userId: string;
 }

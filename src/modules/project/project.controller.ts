@@ -41,7 +41,7 @@ import {
 import { ProjectService } from './services/project.service';
 import { ItemParamDto } from 'src/dto/common.dto';
 import { UserCacheService } from '../user/services/user.cache.service';
-import { ProjectFormBodyDto } from './project.dto';
+import { ProjectFormBodyDto, ProjectMemberFormBodyDto } from './project.dto';
 import { ProjectCacheService } from './services/project.cache.service';
 import { CacheService } from 'src/services/cache/cache.service';
 import { ObjectId } from 'mongodb';
@@ -211,9 +211,9 @@ export class ProjectController {
       const member: Member = {
         id: uuidv1(),
         projectId,
-        projectName: project.name,
         userId,
         userName: user.name,
+        userEmail: user.email,
         role: MemberRoleEnum.Owner,
         createdAt: now,
         updatedAt: now,
@@ -296,6 +296,279 @@ export class ProjectController {
 
     return {
       id,
+    };
+  }
+
+  /**
+   * ANCHOR Member Create
+   * @date 10/05/2025 - 22:00:42
+   *
+   * @async
+   * @param {Request} req
+   * @param {ItemParamDto} param
+   * @param {ProjectMemberFormBodyDto} body
+   * @returns {Promise<[]>}
+   */
+  @Post(':id/member/create')
+  async memberCreate(
+    @Req() req: Request,
+    @Param() param: ItemParamDto,
+    @Body() body: ProjectMemberFormBodyDto,
+  ): Promise<[]> {
+    // session
+    const session: ClientSession = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      // auth
+      const auth: AuthUserInterface = req.user;
+
+      // user
+      const user: UserDocument | null = await this.userService.user({
+        userId: auth.userId,
+        session,
+      });
+
+      if (!user) {
+        throw new ForbiddenException();
+      }
+
+      // project
+      const project: ProjectDocument | null = await this.projectService.project(
+        {
+          projectId: param.id,
+          session,
+        },
+      );
+
+      if (!project) {
+        throw new NotFoundException();
+      }
+
+      const projectId: string = project._id.toString();
+
+      // member
+      const member: Member | null = this.projectService.memberDoc({
+        project,
+        user,
+      });
+
+      if (!member) {
+        throw new ForbiddenException();
+      }
+
+      // check is owner
+      const isOwnerMember: boolean = this.projectService.isOwnerMember(member);
+
+      if (!isOwnerMember) {
+        throw new ForbiddenException();
+      }
+
+      // member user
+      const memberUser: UserDocument | null = await this.userService.user({
+        userId: body.userId,
+        session,
+      });
+
+      if (!memberUser) {
+        throw new NotFoundException({
+          eMessage: 'The requested user information was not found.',
+        });
+      }
+
+      const memberUserId: string = memberUser._id.toString();
+
+      // check already member
+      const existsMember: Member | undefined = project.members.find((e) => {
+        return e.userId == memberUserId;
+      });
+
+      if (existsMember) {
+        throw new NotFoundException({
+          eMessage: 'This user is already a member of the project.',
+        });
+      }
+
+      // now
+      const now: Date = new Date();
+
+      // create new member
+      const newMember: Member = {
+        id: uuidv1(),
+        projectId,
+        userId: memberUserId,
+        userName: memberUser.name,
+        userEmail: memberUser.email,
+        role: MemberRoleEnum.Member,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // update project
+      const projectUpdatedQuery: QueryWithHelpers<
+        UpdateWriteOpResult,
+        ProjectDocument
+      > = this.projectModel.updateOne(
+        {
+          _id: project._id,
+        },
+        {
+          $push: {
+            members: newMember,
+          },
+        },
+        {
+          session,
+          runValidators: true,
+        },
+      );
+
+      const projectUpdated: UpdateWriteOpResult =
+        await projectUpdatedQuery.exec();
+
+      if (projectUpdated.modifiedCount != 1) {
+        throw new InternalServerErrorException();
+      }
+
+      // update user
+      const userUpdatedQuery: QueryWithHelpers<
+        UpdateWriteOpResult,
+        UserDocument
+      > = this.userModel.updateOne(
+        {
+          _id: memberUser._id,
+        },
+        {
+          $push: {
+            members: newMember,
+          },
+        },
+        {
+          session,
+          runValidators: true,
+        },
+      );
+
+      const userUpdated: UpdateWriteOpResult = await userUpdatedQuery.exec();
+
+      if (userUpdated.modifiedCount != 1) {
+        throw new InternalServerErrorException();
+      }
+
+      // remove cache
+      await this.projectCacheService.flushRelatedCache({
+        projectId,
+      });
+
+      await this.userCacheService.flushRelatedCache({
+        userId: memberUserId,
+      });
+
+      for (const member of project.members) {
+        await this.userCacheService.flushRelatedCache({
+          userId: member.userId,
+        });
+      }
+
+      // commit
+      await session.commitTransaction();
+    } catch (e) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+
+      throw e;
+    } finally {
+      await session.endSession();
+    }
+
+    return [];
+  }
+
+  /**
+   * ANCHOR Users
+   * @date 10/05/2025 - 21:23:40
+   *
+   * @async
+   * @param {Request} req
+   * @param {ItemParamDto} param
+   * @returns {Promise<{
+   *     users: UserModel[];
+   *   }>}
+   */
+  @Get(':id/users')
+  async users(
+    @Req() req: Request,
+    @Param() param: ItemParamDto,
+  ): Promise<{
+    users: UserModel[];
+  }> {
+    // auth
+    const auth: AuthUserInterface = req.user;
+
+    // user
+    const user: UserModel | null = await this.userService.info({
+      userId: auth.userId,
+    });
+
+    if (!user) {
+      throw new ForbiddenException();
+    }
+
+    // project
+    const project: ProjectModel | null = await this.projectService.info({
+      projectId: param.id,
+    });
+
+    if (!project) {
+      throw new NotFoundException();
+    }
+
+    // member
+    const member: MemberModel | null = this.projectService.member({
+      project,
+      user,
+    });
+
+    if (!member) {
+      throw new ForbiddenException();
+    }
+
+    // users id
+    const usersId: ObjectId[] = project.members.map((e) => {
+      return new ObjectId(e.userId);
+    });
+
+    // items
+    const itemsQuery: QueryWithHelpers<
+      HydratedDocument<UserDocument>[],
+      HydratedDocument<UserDocument>
+    > = this.userModel
+      .find({
+        _id: {
+          $nin: usersId,
+        },
+      })
+      .sort({
+        name: 1,
+      });
+
+    const items: UserDocument[] = await itemsQuery.exec();
+
+    // users
+    const users: UserModel[] = [];
+
+    for (const item of items) {
+      // user
+      const user: UserModel = this.userService.model({
+        user: item,
+      });
+
+      users.push(user);
+    }
+
+    return {
+      users,
     };
   }
 
